@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>センサからの信号受信</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.3/socket.io.js"></script>
+  </head>
+
+  <body>
+    <h1>スマホからのセンサ情報を受信</h1>
+    <div>
+      <div>あなたのID: <span id="myid"></span></div>
+      <button id="connect">ルームに入る</button>
+      
+      <div><strong>残り時間:</strong> <span id="time">30.0</span> 秒</div>
+    </div>
+
+    <script>
+      // ===============================
+      // ソケット通信
+      // ===============================
+      let socket = io.connect();
+      let btn = document.querySelector("#connect");
+      let b = 0;
+      let g = 0;
+
+      // クライアントIDの保持
+      let myid = sessionStorage.getItem("clientId");
+      if (!myid) {
+        myid = Math.random().toString(36).substring(2, 15);
+        sessionStorage.setItem("clientId", myid);
+      }
+      document.querySelector("#myid").innerHTML = myid;
+      console.log("あなたのID: ", myid);
+
+      btn.addEventListener("click", function () {
+        socket.emit("join", "game");
+        btn.remove();
+
+        // ゲーム開始
+         gameStarted = true;
+  startTime = millis(); // タイマー開始
+});
+    
+
+      
+
+      socket.on("sensor", function (data) {
+        g = parseFloat(data.g);
+        b = parseFloat(data.b);
+        console.log(data);
+      });
+
+      // ===============================
+      // ゲーム変数
+      // ===============================
+      let x = 0;
+      let y = 0;
+      let r = 40; // プレイヤー半径
+      let speed = 0.1;
+
+      // 鬼（自動で動く）
+      let oni = {
+        x: 0,
+        y: 0,
+        vx: 3,
+        vy: 2,
+        r: 50,
+      };
+
+      // タイマー関連
+      let startTime;
+      let elapsedTime = 0;
+      let gameOver = false;
+      let timeLimit = 30;
+      let gameStarted = false; 
+
+      const timeDisplay = document.querySelector("#time");
+
+      // ===============================
+      // p5.js描画設定
+      // ===============================
+      function setup() {
+        createCanvas(800, 800, WEBGL);
+        camera(0, 800, 100, 0, 0, 0, 0, 1, 0);
+        noStroke();
+        oni.x = random(-300, 300);
+        oni.y = random(-300, 300);
+
+        startTime = millis(); // タイマー開始？
+      }
+
+      function draw() {
+        background(0);
+        orbitControl();
+        ambientLight(50, 50, 50);
+        directionalLight(100, 20, 20, -1, -1, -1);
+        pointLight(20, 20, 100, 0, 0, 800);
+
+        // 床（固定）
+        push();
+        translate(0, 0, -50);
+        specularMaterial(100);
+        box(800, 800, 30);
+        pop();
+
+        // ===============================
+        // プレイヤーの動き（スマホ操作）
+        // ===============================
+        push();
+        x += speed * g;
+        y += speed * b;
+
+        // 壁との当たり判定
+        if (x > width / 2 - r) x = width / 2 - r;
+        if (y > width / 2 - r) y = width / 2 - r;
+        if (x < -width / 2 + r) x = -width / 2 + r;
+        if (y < -width / 2 + r) y = -width / 2 + r;
+
+        translate(x, y, 0);
+        specularMaterial(0, 200, 255); // 水色のプレイヤー
+        sphere(r);
+        pop();
+
+        // ===============================
+        // 鬼の動き（自動）
+        // ===============================
+        push();
+        oni.x += oni.vx;
+        oni.y += oni.vy;
+
+        // 壁で跳ね返る
+        if (oni.x > width / 2 - oni.r || oni.x < -width / 2 + oni.r) oni.vx *= -1;
+        if (oni.y > width / 2 - oni.r || oni.y < -width / 2 + oni.r) oni.vy *= -1;
+
+        translate(oni.x, oni.y, 0);
+        specularMaterial(255, 0, 0); // 赤い鬼
+        sphere(oni.r);
+        pop();
+
+        // ===============================
+        // 当たり判定（ゲームオーバーの判定）
+        // ===============================
+        let d = dist(x, y, 0, oni.x, oni.y, 0);
+        if (d < r + oni.r && !gameOver) {
+          gameOver = true;
+          timeDisplay.textContent = "0.0";
+          alert("Game Over! 鬼に当たりました！");
+        }
+
+        // ===============================
+// タイマー処理
+// ===============================
+if (gameStarted && !gameOver) {
+  let elapsed = (millis() - startTime) / 1000;
+  let remaining = max(0, timeLimit - elapsed);
+  timeDisplay.textContent = remaining.toFixed(1);
+
+  if (remaining <= 0) {
+    gameOver = true;
+    timeDisplay.textContent = "0.0";
+    alert("おめでとう！30秒間生き残りました！");
+  }
+}
+
+        
+
+      }
+    </script>
+  </body>
+</html>
