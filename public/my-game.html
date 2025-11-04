@@ -1,20 +1,99 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>センサからの信号受信</title>
+    <title>赤ボールに当たるな危険！！</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.3/socket.io.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+        background: radial-gradient(circle at top, #e0f7fa, #b2ebf2, #80deea);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 100vh;
+        color: #333;
+      }
+
+      h1 {
+        margin-top: 30px;
+        font-size: 2.2em;
+        color: #e60000;
+        text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      p {
+        font-size: 16px;
+        line-height: 1.8;
+        background-color: #f0f8ff;
+        padding: 15px 25px;
+        border-radius: 12px;
+        max-width: 600px;
+        text-align: center;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      #info {
+        margin-top: 20px;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.85);
+        padding: 15px 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      #connect {
+        margin: 15px 0;
+        padding: 12px 30px;
+        font-size: 16px;
+        border: none;
+        border-radius: 25px;
+        background: linear-gradient(135deg, #00b4d8, #0077b6);
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      #connect:hover {
+        background: linear-gradient(135deg, #0096c7, #005f8a);
+        transform: scale(1.05);
+      }
+
+      #time {
+        font-weight: bold;
+        font-size: 1.2em;
+        color: #d90429;
+      }
+
+      canvas {
+        display: block;
+        margin: 30px auto;
+        border-radius: 12px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+      }
+    </style>
   </head>
 
   <body>
-    <h1>スマホからのセンサ情報を受信</h1>
-    <div>
+    <h1>赤ボールに当たるな危険！！</h1>
+
+    <p>
+      あなたは青ボールです。スマートフォンを傾けて青ボールを操作してください。<br />
+      赤ボールに当たるとゲームオーバーになります。<br />
+      制限時間は30秒で、10秒経過するごとに赤ボールが1つずつ追加されます。<br />
+      「ルームに入る」ボタンをクリックするとゲームが始まります。
+    </p>
+
+    <div id="info">
       <div>あなたのID: <span id="myid"></span></div>
       <button id="connect">ルームに入る</button>
-      
       <div><strong>残り時間:</strong> <span id="time">30.0</span> 秒</div>
     </div>
 
@@ -39,14 +118,9 @@
       btn.addEventListener("click", function () {
         socket.emit("join", "game");
         btn.remove();
-
-        // ゲーム開始
-         gameStarted = true;
-  startTime = millis(); // タイマー開始
-});
-    
-
-      
+        gameStarted = true;
+        startTime = millis(); // タイマー開始
+      });
 
       socket.on("sensor", function (data) {
         g = parseFloat(data.g);
@@ -59,38 +133,47 @@
       // ===============================
       let x = 0;
       let y = 0;
-      let r = 40; // プレイヤー半径
+      let r = 40;
       let speed = 0.1;
-
-      // 鬼（自動で動く）
-      let oni = {
-        x: 0,
-        y: 0,
-        vx: 3,
-        vy: 2,
-        r: 50,
-      };
-
-      // タイマー関連
+      let onis = [];
       let startTime;
-      let elapsedTime = 0;
       let gameOver = false;
       let timeLimit = 30;
-      let gameStarted = false; 
+      let gameStarted = false;
 
       const timeDisplay = document.querySelector("#time");
 
-      // ===============================
-      // p5.js描画設定
-      // ===============================
       function setup() {
         createCanvas(800, 800, WEBGL);
         camera(0, 800, 100, 0, 0, 0, 0, 1, 0);
         noStroke();
-        oni.x = random(-300, 300);
-        oni.y = random(-300, 300);
+        addOni();
+      }
 
-        startTime = millis(); // タイマー開始？
+      function addOni() {
+        let oni;
+        if (onis.length === 0) {
+          let minDist = 200;
+          do {
+            oni = {
+              x: random(-300, 300),
+              y: random(-300, 300),
+              vx: random([-3, 3]),
+              vy: random([-2, 2]),
+              r: 50,
+            };
+          } while (dist(oni.x, oni.y, 0, 0) < minDist);
+        } else {
+          oni = {
+            x: random(-300, 300),
+            y: random(-300, 300),
+            vx: random([-3, 3]),
+            vy: random([-2, 2]),
+            r: 50,
+          };
+        }
+        onis.push(oni);
+        console.log("鬼を追加:", onis.length, "体目");
       }
 
       function draw() {
@@ -100,74 +183,71 @@
         directionalLight(100, 20, 20, -1, -1, -1);
         pointLight(20, 20, 100, 0, 0, 800);
 
-        // 床（固定）
+        // 床
         push();
         translate(0, 0, -50);
         specularMaterial(100);
         box(800, 800, 30);
         pop();
 
-        // ===============================
-        // プレイヤーの動き（スマホ操作）
-        // ===============================
+        // プレイヤー
         push();
-        x += speed * g;
-        y += speed * b;
+        if (gameStarted && !gameOver) {
+          x += speed * g;
+          y += speed * b;
+        }
 
-        // 壁との当たり判定
         if (x > width / 2 - r) x = width / 2 - r;
         if (y > width / 2 - r) y = width / 2 - r;
         if (x < -width / 2 + r) x = -width / 2 + r;
         if (y < -width / 2 + r) y = -width / 2 + r;
 
         translate(x, y, 0);
-        specularMaterial(0, 200, 255); // 水色のプレイヤー
+        specularMaterial(0, 200, 255);
         sphere(r);
         pop();
 
-        // ===============================
-        // 鬼の動き（自動）
-        // ===============================
-        push();
-        oni.x += oni.vx;
-        oni.y += oni.vy;
+        // 鬼の動き
+        for (let oni of onis) {
+          if (gameStarted && !gameOver) {
+            oni.x += oni.vx;
+            oni.y += oni.vy;
+            if (oni.x > width / 2 - oni.r || oni.x < -width / 2 + oni.r) oni.vx *= -1;
+            if (oni.y > width / 2 - oni.r || oni.y < -width / 2 + oni.r) oni.vy *= -1;
+          }
 
-        // 壁で跳ね返る
-        if (oni.x > width / 2 - oni.r || oni.x < -width / 2 + oni.r) oni.vx *= -1;
-        if (oni.y > width / 2 - oni.r || oni.y < -width / 2 + oni.r) oni.vy *= -1;
-
-        translate(oni.x, oni.y, 0);
-        specularMaterial(255, 0, 0); // 赤い鬼
-        sphere(oni.r);
-        pop();
-
-        // ===============================
-        // 当たり判定（ゲームオーバーの判定）
-        // ===============================
-        let d = dist(x, y, 0, oni.x, oni.y, 0);
-        if (d < r + oni.r && !gameOver) {
-          gameOver = true;
-          timeDisplay.textContent = "0.0";
-          alert("Game Over! 鬼に当たりました！");
+          push();
+          translate(oni.x, oni.y, 0);
+          specularMaterial(255, 0, 0);
+          sphere(oni.r);
+          pop();
         }
 
-        // ===============================
-// タイマー処理
-// ===============================
-if (gameStarted && !gameOver) {
-  let elapsed = (millis() - startTime) / 1000;
-  let remaining = max(0, timeLimit - elapsed);
-  timeDisplay.textContent = remaining.toFixed(1);
+        // 当たり判定
+        for (let oni of onis) {
+          let d = dist(x, y, 0, oni.x, oni.y, 0);
+          if (d < r + oni.r && !gameOver && gameStarted) {
+            gameOver = true;
+            timeDisplay.textContent = "0.0";
+            alert("Game Over! 鬼に当たりました！");
+          }
+        }
 
-  if (remaining <= 0) {
-    gameOver = true;
-    timeDisplay.textContent = "0.0";
-    alert("おめでとう！30秒間生き残りました！");
-  }
-}
+        // タイマー
+        if (gameStarted && !gameOver) {
+          let elapsed = (millis() - startTime) / 1000;
+          let remaining = max(0, timeLimit - elapsed);
+          timeDisplay.textContent = remaining.toFixed(1);
 
-        
+          if (Math.floor(elapsed) === 10 && onis.length === 1) addOni();
+          if (Math.floor(elapsed) === 20 && onis.length === 2) addOni();
 
+          if (remaining <= 0) {
+            gameOver = true;
+            timeDisplay.textContent = "0.0";
+            alert("おめでとう！30秒間生き残りました！");
+          }
+        }
       }
     </script>
   </body>
